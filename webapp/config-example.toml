@@ -1,0 +1,49 @@
+# RDS Dashboard Configuration
+
+Title = "RDS Dashboard"
+# CollectorTimeoutSeconds: Global deadline (seconds) for the collector to complete a full data collection cycle across all servers.
+# The collector pools jobs according to MaxConcurrentJobs and enforces this timeout across all batches.
+# Individual job timeouts (CIM queries, quser) scale proportionally but have min/max caps (5-15s for CIM, 4-12s for quser).
+# Recommended: 90s (allows ~60s margin for 35 servers @ 6s/server over 3 rolling batches, plus WinRM client queuing).
+# Too low (< 60s) risks timeouts on slow WMI queries; too high (> 120s) wastes collector startup overhead.
+CollectorTimeoutSeconds = 90
+# CycleDelaySeconds: Minimum delay (seconds) between successive collection cycles.
+# After one collection cycle completes, the collector waits this duration before starting the next cycle.
+# The full snapshot stale threshold is: max(CycleDelaySeconds × 3, CollectorTimeoutSeconds + CycleDelaySeconds × 2).
+# With 90s timeout and 20s delay: stale threshold = 100s, next snapshot appears by t=110s (well under threshold).
+# Recommended: 20s (balances responsiveness with WinRM connection pool recovery time).
+# Too low (< 10s) causes rapid connection churn; too high (> 60s) reduces dashboard freshness.
+CycleDelaySeconds = 20
+# MaxConcurrentJobs: maximum simultaneous server probes. Lower values reduce CPU,
+# memory, and remote connection pressure. Default: 6.
+MaxConcurrentJobs = 6
+# CollectCpuRam: collect CPU and RAM through remote CIM probes. Set false to reduce load;
+# quser session collection continues when disabled. Default: true.
+CollectCpuRam = true
+# CollectorDebugMode: Set to true to enable per-cycle diagnostics on the collector console.
+# When enabled, prints CYCLE START, per-server probe details (RAM/CPU/QUSER timings and errors),
+# TIMED OUT server names, and CYCLE END summary every cycle. Generates significant log volume.
+# Use temporarily to diagnose which servers are failing and why (e.g. WinRM/CIM errors).
+# Default: false
+CollectorDebugMode = false
+
+# CustomLoginDomain: Optional. Alternative Windows domain used for user authentication.
+# Useful when the users' domain differs from the systems' domain
+# (e.g. users are in USERS.example.local but RDS servers are joined to SYSTEMS.example.local).
+# When set, login credentials without an explicit domain prefix (no DOMAIN\ or @domain suffix)
+# are validated against this domain instead of the server's default domain.
+# AD user search (dashboard search box) also targets this domain.
+# Default: empty (uses the server's own domain via $env:USERDNSDOMAIN)
+# CustomLoginDomain = "users.example.local"
+
+[Farms]
+First = [
+    "rds-a01.example.local",
+    "rds-a02.example.local",
+    "rds-a03.example.local"
+]
+Second = [
+    "rds-b01.example.local",
+    "rds-b02.example.local",
+    "rds-b03.example.local"
+]

@@ -1,0 +1,14 @@
+runtime/
+logs/
+*.log
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.tmp
+*.bak
+*.zip
+password.txt
+config.toml
+config.local.toml
+logo-company.png
+favicon-company.ico

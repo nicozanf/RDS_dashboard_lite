@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>__DASHBOARD_TITLE__ Login</title>
+  <style>
+    body { margin:0; font-family: Segoe UI, Tahoma, sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center; background: radial-gradient(circle at top, #f2f7ff, #d3e2f8); }
+    .card { width:min(420px, 92vw); background:#fff; border-radius:14px; box-shadow:0 16px 40px rgba(0,0,0,0.18); padding:28px; }
+    h1 { margin:0 0 8px; font-size:1.6rem; }
+    p { margin:0 0 18px; color:#4e5d78; }
+    label { display:block; margin:10px 0 6px; font-weight:600; }
+    input { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #b9c6da; border-radius:8px; }
+    button { margin-top:16px; width:100%; padding:11px 12px; border:0; border-radius:8px; background:#1558c0; color:#fff; font-weight:700; cursor:pointer; }
+    .err { min-height:20px; margin-top:8px; color:#b20000; font-size:0.95rem; }
+  </style>
+</head>
+<body>
+  <form class="card" method="post" action="/login">
+    <h1>__DASHBOARD_TITLE__</h1>
+    <p>Sign in with your AD account on the <strong>__AD_DOMAIN__</strong> domain.</p>
+    <label for="username">Username</label>
+    <input id="username" name="username" autocomplete="username" required />
+    <label for="password">Password</label>
+    <input id="password" type="password" name="password" autocomplete="current-password" required />
+    <button type="submit">Sign In</button>
+    <div class="err">__SAFE_ERROR__</div>
+  </form>
+</body>
+</html>

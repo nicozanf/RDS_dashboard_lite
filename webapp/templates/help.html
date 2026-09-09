@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Help - __DASHBOARD_TITLE__</title>
+  <style>
+    body { margin:0; background:#f3f6fb; font-family:Segoe UI, Tahoma, sans-serif; color:#17253b; }
+    header { padding:6px 18px; background:#123a7a; color:#fff; display:flex; gap:12px; align-items:center; justify-content:space-between; }
+    header .left, header .nav { display:flex; align-items:center; gap:10px; }
+    header a { color:#fff; }
+    .logo-mark { position:relative; width:96px; height:64px; display:inline-flex; align-items:center; justify-content:flex-start; overflow:hidden; }
+    .logo-fallback { position:absolute; inset:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(255,255,255,0.2); color:#fff; font-size:28px; font-weight:700; letter-spacing:0.4px; opacity:0; transition:opacity 120ms ease; }
+    .logo-image { position:relative; width:96px; height:96px; display:block; opacity:0; transition:opacity 120ms ease; object-fit:contain; }
+    .logo-image.is-ready { opacity:1; }
+    .logo-fallback.is-shown { opacity:1; }
+    .logo-fallback.is-hidden { opacity:0; pointer-events:none; }
+    .nav-btn { text-decoration:none; background:rgba(255,255,255,0.16); padding:6px 10px; border-radius:7px; font-weight:600; }
+    .nav-btn:hover, .nav-btn:focus-visible { background:rgba(255,255,255,0.3); outline:2px solid rgba(255,255,255,0.5); outline-offset:2px; }
+    .shell { max-width:760px; margin:0 auto; padding:24px 14px; }
+    .panel { background:#fff; border:1px solid #dbe5f4; border-radius:8px; box-shadow:0 2px 8px rgba(17,41,84,0.08); padding:22px; }
+    h2 { margin:0 0 16px; color:#0f2f63; font-size:22px; }
+    p { margin:0 0 14px; line-height:1.5; }
+    .version { color:#5f6b80; font-size:14px; }
+    .project-link { color:#1558c0; font-weight:600; }
+    @media (max-width:760px) { header { align-items:flex-start; flex-direction:column; } header .nav { width:100%; justify-content:space-between; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="left"><a href="/dashboard" aria-label="Dashboard home"><span class="logo-mark"><span class="logo-fallback is-hidden" aria-hidden="true">NB</span><img id="header-logo" class="logo-image" src="/logo.png" alt="Logo" width="96" height="96" /></span></a><strong>Help - __DASHBOARD_TITLE__</strong></div>
+    <div class="nav"><a class="nav-btn" href="/dashboard">Back to dashboard</a><span>Signed in as __SAFE_USER__ | <a href="/logout">Logout</a> | <a href="/help">Help</a></span></div>
+  </header>
+
+  <main class="shell">
+    <section class="panel">
+      <h2>RDS Dashboard</h2>
+      <p>Project home: <a class="project-link" href="https://github.com/nicozanf/RDS_dashboard" target="_blank" rel="noopener noreferrer">github.com/nicozanf/RDS_dashboard</a></p>
+      <p class="version">Version __APP_VERSION__</p>
+    </section>
+  </main>
+
+  <script>
+const headerLogoEl = document.getElementById('header-logo');
+const logoFallbackEl = document.querySelector('.logo-fallback');
+
+headerLogoEl.addEventListener('load', () => {
+  headerLogoEl.classList.add('is-ready');
+  logoFallbackEl.classList.add('is-hidden');
+});
+
+headerLogoEl.addEventListener('error', () => {
+  logoFallbackEl.classList.remove('is-hidden');
+  logoFallbackEl.classList.add('is-shown');
+});
+  </script>
+</body>
+</html>

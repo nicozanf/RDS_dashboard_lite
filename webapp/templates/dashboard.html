@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>__DASHBOARD_TITLE__</title>
+  <style>
+    body { margin:0; background:#f4f7fb; color:#172033; font-family:Segoe UI,Tahoma,sans-serif; }
+    header { padding:10px 18px; background:#123a7a; color:#fff; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+    header a { color:#fff; }
+    .shell { padding:16px; }
+    .toolbar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:12px 0; }
+    input { padding:9px; border:1px solid #b8c4d8; border-radius:6px; min-width:260px; }
+    .muted { color:#53627a; font-size:13px; }
+    .message { padding:10px 12px; border-radius:6px; background:#fff4ce; border:1px solid #ffb900; }
+    table { width:100%; border-collapse:collapse; background:#fff; }
+    th, td { border:1px solid #d7deea; padding:7px; text-align:left; font-size:13px; }
+    th { background:#223a64; color:#fff; }
+    .actions { display:flex; gap:6px; flex-wrap:wrap; }
+    button { border:0; border-radius:5px; padding:6px 9px; cursor:pointer; }
+    .disconnect { background:#ffd66e; } .logoff { background:#ff9a9a; } .message-btn { background:#8fc3ff; }
+  </style>
+</head>
+<body>
+  <header><strong>__DASHBOARD_TITLE__</strong><span>Signed in as __SAFE_USER__ | <a href="/help">Help</a> | <a href="/logout">Logout</a></span></header>
+  <main class="shell">
+    <div class="toolbar"><input id="search" placeholder="Filter user, server, or state" /><span id="summary" class="muted">Loading live sessions...</span></div>
+    <div id="message" class="message" hidden></div>
+    <table><thead><tr><th>Server</th><th>User</th><th>Session</th><th>ID</th><th>State</th><th>Idle</th><th>Logon</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table>
+  </main>
+<script>
+const csrfToken = '__CSRF_TOKEN__';
+const rowsEl = document.getElementById('rows');
+const searchEl = document.getElementById('search');
+const summaryEl = document.getElementById('summary');
+const messageEl = document.getElementById('message');
+let snapshot = { Sessions: [] };
+function esc(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showMessage(text) { messageEl.textContent = text; messageEl.hidden = !text; }
+function visibleSessions() { const query = searchEl.value.trim().toLowerCase(); return (Array.isArray(snapshot.Sessions) ? snapshot.Sessions : []).filter(s => !query || ['Server','Username','State','SessionName'].some(k => String(s[k] ?? '').toLowerCase().includes(query))); }
+function render() { const sessions = visibleSessions(); rowsEl.innerHTML = sessions.map(s => `<tr><td>${esc(s.Server)}</td><td>${esc(s.Username)}</td><td>${esc(s.SessionName)}</td><td>${esc(s.ID)}</td><td>${esc(s.State)}</td><td>${esc(s.IdleTime)}</td><td>${esc(s.LogonTime)}</td><td><div class="actions"><button class="disconnect" data-action="disconnect">Disconnect</button><button class="logoff" data-action="logoff">Log off</button><button class="message-btn" data-action="sendmsg">Message</button></div></td></tr>`).join(''); summaryEl.textContent = `${sessions.length} live session${sessions.length === 1 ? '' : 's'} | Updated ${snapshot.GeneratedAtUtc || 'not yet'}`; rowsEl.querySelectorAll('button').forEach((button, index) => button.addEventListener('click', () => act(button.dataset.action, sessions[Math.floor(index / 3)]))); }
+async function load() { try { const response = await fetch('/api/data', { cache:'no-store' }); if (!response.ok) throw new Error(await response.text()); snapshot = await response.json(); showMessage(''); render(); } catch (error) { showMessage(`Unable to load live session data: ${error.message}`); } }
+async function act(action, session) { if (!session) return; let message = ''; if (action === 'sendmsg') { message = window.prompt('Message to send:') || ''; if (!message) return; } if ((action === 'logoff' || action === 'disconnect') && !window.confirm(`${action === 'logoff' ? 'Log off' : 'Disconnect'} ${session.Username || 'this session'}?`)) return; const body = new URLSearchParams({ csrfToken, action, server:String(session.Server || ''), id:String(session.ID || ''), message, username:String(session.Username || ''), sessionName:String(session.SessionName || '') }); try { const response = await fetch('/api/session-action', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body }); if (!response.ok) throw new Error(await response.text()); showMessage('Session action completed.'); await load(); } catch (error) { showMessage(`Session action failed: ${error.message}`); } }
+searchEl.addEventListener('input', render); load(); setInterval(load, __AUTO_REFRESH_SECONDS__ * 1000);
+</script>
+</body>
+</html>
