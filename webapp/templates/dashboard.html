@@ -6,8 +6,15 @@
   <title>__DASHBOARD_TITLE__</title>
   <style>
     body { margin:0; background:#f4f7fb; color:#172033; font-family:Segoe UI,Tahoma,sans-serif; }
-    header { padding:10px 18px; background:#123a7a; color:#fff; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+    header { padding:6px 18px; background:#123a7a; color:#fff; display:flex; justify-content:space-between; align-items:center; gap:16px; }
+    header .left { display:flex; align-items:center; gap:10px; }
     header a { color:#fff; }
+    .logo-mark { position:relative; width:96px; height:64px; display:inline-flex; align-items:center; justify-content:flex-start; overflow:hidden; }
+    .logo-fallback { position:absolute; inset:0; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:rgba(255,255,255,0.2); color:#fff; font-size:28px; font-weight:700; letter-spacing:0.4px; opacity:0; transition:opacity 120ms ease; }
+    .logo-image { position:relative; width:96px; height:96px; display:block; opacity:0; transition:opacity 120ms ease; object-fit:contain; }
+    .logo-image.is-ready { opacity:1; }
+    .logo-fallback.is-shown { opacity:1; }
+    .logo-fallback.is-hidden { opacity:0; pointer-events:none; }
     .shell { padding:16px; }
     .toolbar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:12px 0; }
     input { padding:9px; border:1px solid #b8c4d8; border-radius:6px; min-width:260px; }
@@ -19,13 +26,18 @@
     .actions { display:flex; gap:6px; flex-wrap:wrap; }
     button { border:0; border-radius:5px; padding:6px 9px; cursor:pointer; }
     .disconnect { background:#ffd66e; } .logoff { background:#ff9a9a; } .message-btn { background:#8fc3ff; }
+    .host-badges { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px; }
+    .host-badge { display:flex; flex-direction:column; gap:2px; padding:6px 10px; border-radius:6px; color:#fff; min-width:110px; font-size:12px; }
+    .host-badge .name { font-weight:600; }
+    .host-badge.ok { background:#2e8b57; } .host-badge.warn { background:#c9820a; } .host-badge.crit { background:#c0392b; } .host-badge.unknown { background:#7a8699; }
   </style>
 </head>
 <body>
-  <header><strong>__DASHBOARD_TITLE__</strong><span>Signed in as __SAFE_USER__ | <a href="/help">Help</a> | <a href="/logout">Logout</a></span></header>
+  <header><div class="left"><a href="/dashboard" aria-label="Dashboard home"><span class="logo-mark"><span class="logo-fallback is-hidden" aria-hidden="true">NB</span><img id="header-logo" class="logo-image" src="/logo.png" alt="Logo" width="96" height="96" /></span></a><strong>__DASHBOARD_TITLE__</strong></div><span>Signed in as __SAFE_USER__ | <a href="/help">Help</a> | <a href="/logout">Logout</a></span></header>
   <main class="shell">
     <div class="toolbar"><input id="search" placeholder="Filter user, server, or state" /><span id="summary" class="muted">Loading live sessions...</span></div>
     <div id="message" class="message" hidden></div>
+    <div id="hostBadges" class="host-badges"></div>
     <table><thead><tr><th>Server</th><th>User</th><th>Session</th><th>ID</th><th>State</th><th>Idle</th><th>Logon</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table>
   </main>
 <script>
@@ -34,12 +46,19 @@ const rowsEl = document.getElementById('rows');
 const searchEl = document.getElementById('search');
 const summaryEl = document.getElementById('summary');
 const messageEl = document.getElementById('message');
+const hostBadgesEl = document.getElementById('hostBadges');
+const headerLogoEl = document.getElementById('header-logo');
+const logoFallbackEl = document.querySelector('.logo-fallback');
 let snapshot = { Sessions: [] };
+headerLogoEl.addEventListener('load', () => { headerLogoEl.classList.add('is-ready'); logoFallbackEl.classList.add('is-hidden'); });
+headerLogoEl.addEventListener('error', () => { logoFallbackEl.classList.remove('is-hidden'); logoFallbackEl.classList.add('is-shown'); });
+function hostBadgeClass(cpu, ram) { const worst = Math.max(cpu ?? -1, ram ?? -1); if (worst < 0) return 'unknown'; if (worst >= 85) return 'crit'; if (worst >= 60) return 'warn'; return 'ok'; }
+function renderHosts() { const servers = Array.isArray(snapshot.Servers) ? snapshot.Servers : []; hostBadgesEl.innerHTML = servers.map(srv => { const cpu = srv.CPU; const ram = srv.RAM; const cls = hostBadgeClass(cpu, ram); const cpuText = cpu === null || cpu === undefined ? '-' : `${cpu}%`; const ramText = ram === null || ram === undefined ? '-' : `${ram}%`; return `<div class="host-badge ${cls}"><span class="name">${esc(srv.Short || srv.Server)}</span><span>CPU ${cpuText} | RAM ${ramText}</span></div>`; }).join(''); }
 function esc(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function showMessage(text) { messageEl.textContent = text; messageEl.hidden = !text; }
 function visibleSessions() { const query = searchEl.value.trim().toLowerCase(); return (Array.isArray(snapshot.Sessions) ? snapshot.Sessions : []).filter(s => !query || ['Server','Username','State','SessionName'].some(k => String(s[k] ?? '').toLowerCase().includes(query))); }
 function render() { const sessions = visibleSessions(); rowsEl.innerHTML = sessions.map(s => `<tr><td>${esc(s.Server)}</td><td>${esc(s.Username)}</td><td>${esc(s.SessionName)}</td><td>${esc(s.ID)}</td><td>${esc(s.State)}</td><td>${esc(s.IdleTime)}</td><td>${esc(s.LogonTime)}</td><td><div class="actions"><button class="disconnect" data-action="disconnect">Disconnect</button><button class="logoff" data-action="logoff">Log off</button><button class="message-btn" data-action="sendmsg">Message</button></div></td></tr>`).join(''); summaryEl.textContent = `${sessions.length} live session${sessions.length === 1 ? '' : 's'} | Updated ${snapshot.GeneratedAtUtc || 'not yet'}`; rowsEl.querySelectorAll('button').forEach((button, index) => button.addEventListener('click', () => act(button.dataset.action, sessions[Math.floor(index / 3)]))); }
-async function load() { try { const response = await fetch('/api/data', { cache:'no-store' }); if (!response.ok) throw new Error(await response.text()); snapshot = await response.json(); showMessage(''); render(); } catch (error) { showMessage(`Unable to load live session data: ${error.message}`); } }
+async function load() { try { const response = await fetch('/api/data', { cache:'no-store' }); if (!response.ok) throw new Error(await response.text()); snapshot = await response.json(); showMessage(''); renderHosts(); render(); } catch (error) { showMessage(`Unable to load live session data: ${error.message}`); } }
 async function act(action, session) { if (!session) return; let message = ''; if (action === 'sendmsg') { message = window.prompt('Message to send:') || ''; if (!message) return; } if ((action === 'logoff' || action === 'disconnect') && !window.confirm(`${action === 'logoff' ? 'Log off' : 'Disconnect'} ${session.Username || 'this session'}?`)) return; const body = new URLSearchParams({ csrfToken, action, server:String(session.Server || ''), id:String(session.ID || ''), message, username:String(session.Username || ''), sessionName:String(session.SessionName || '') }); try { const response = await fetch('/api/session-action', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body }); if (!response.ok) throw new Error(await response.text()); showMessage('Session action completed.'); await load(); } catch (error) { showMessage(`Session action failed: ${error.message}`); } }
 searchEl.addEventListener('input', render); load(); setInterval(load, __AUTO_REFRESH_SECONDS__ * 1000);
 </script>

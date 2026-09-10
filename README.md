@@ -5,6 +5,9 @@ It's built with native PowerShell/.NET components and standard Windows commands 
 
 It's a stripped down version of the RDS dashboard hosted at https://github.com/nicozanf/RDS_dashboard. Removing data saving for history graphs greatly reduces its cpu/memory footprint.
 
+the **main lite Dashboard**. All the current sessions are listed and searchable. You can disconnect / logoff /message users.
+![the main Dashboard](docs/images/dash.png)
+
 ## Features
 
 - HTTPS on port 443

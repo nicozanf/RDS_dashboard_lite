@@ -194,7 +194,6 @@ $auditLogFile = Join-Path $logsDir 'connection_actions.log'
 $collectorStdOutLog = Join-Path $logsDir 'collector.stdout.log'
 $collectorStdErrLog = Join-Path $logsDir 'collector.stderr.log'
 $collectorCycleLog = Join-Path $logsDir 'collector.log'
-$startupLogMaintenance = Invoke-StartupLogMaintenance -LogPaths @($logFile, $auditLogFile, $collectorStdOutLog, $collectorStdErrLog, $collectorCycleLog) -LogsFolder $logsDir -MonthsToKeep 6
 
 if (-not [System.IO.Path]::IsPathRooted([string]$ConfigFile)) {
     $ConfigFile = Join-Path $scriptRoot $ConfigFile
@@ -210,13 +209,6 @@ catch {
 
 # Set up log file path for shared Write-Log function
 Initialize-Logging -LogPath $logFile
-if ($startupLogMaintenance) {
-    $rotatedCount = @($startupLogMaintenance.RotatedLogs).Count
-    Write-Log ("Startup log maintenance completed in '{0}': rotated={1}, deleted_old={2}." -f $logsDir, $rotatedCount, [int]$startupLogMaintenance.DeletedCount)
-    foreach ($rotatedPath in @($startupLogMaintenance.RotatedLogs)) {
-        Write-Log ("Rotated log file: {0}" -f $rotatedPath)
-    }
-}
 
 $configData = Read-ConfigFile -Path $ConfigFile
 $dashboardTitle = $configData.Title
@@ -2150,16 +2142,10 @@ function Get-HtmlTemplate {
 }
 
 function Test-TemplateAvailability {
+    # Lite ships only these templates; other Get-HtmlTemplate callers are inherited dead code from the full dashboard.
     $requiredTemplates = @(
         'login.html',
-        'logs.html',
-        'health.html',
-        'ad_search.html',
         'dashboard.html',
-        'settings.html',
-        'farm.html',
-        'server.html',
-        'server_rdp_logins.html',
         'help.html'
     )
 
@@ -3697,15 +3683,7 @@ try {
     else {
         Write-Log 'All required templates found.'
     }
-    $detectedExe = if ([string]::IsNullOrWhiteSpace([string]$script:sqliteExe)) { 'not found' } else { [string]$script:sqliteExe }
-    if ($script:sqliteEnabled) {
-        Write-Log ("SQLite enabled: true (exe: {0}, db: {1})" -f $script:sqliteExe, $farmMetricsDbPath)
-        Write-AuditLog -Event 'sqlite_status' -Actor 'system' -State 'Enabled' -Details ("SQLite enabled: true (exe: {0}, db: {1})" -f $script:sqliteExe, $farmMetricsDbPath)
-    }
-    else {
-        Write-Log ("SQLite enabled: false (exe: {0}, db: {1})" -f $detectedExe, $farmMetricsDbPath)
-        Write-AuditLog -Event 'sqlite_status' -Actor 'system' -State 'Disabled' -Details ("SQLite enabled: false (exe: {0}, db: {1})" -f $detectedExe, $farmMetricsDbPath)
-    }
+    # Lite has no SQLite support by design; status logging is intentionally omitted.
     $deletedLogs = Remove-OldAuditLogs -DaysToKeep 100
     Confirm-DashboardAccessGroup
     Write-AuditLog -Event 'service_start' -Actor 'system' -Details "RDS Dashboard web service started, version $($script:ApplicationVersion) (cleaned $deletedLogs old audit log entries)"
@@ -4332,29 +4310,10 @@ finally {
         }
     }
     catch {}
-    
-    # Ensure shutdown is logged
-    try {
-        if (-not (Test-Path -LiteralPath $auditLogFile)) {
-            Add-Content -LiteralPath $auditLogFile -Value 'Timestamp|Event|Actor|Server|SessionId|Username|SessionName|State|Details' -Encoding UTF8
-        }
-        $shutdownLine = @(
-            (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'),
-            'service_shutdown',
-            'system',
-            '',
-            '',
-            '',
-            '',
-            '',
-            'RDS Dashboard web service stopped'
-        ) -join '|'
-        Add-Content -LiteralPath $auditLogFile -Value $shutdownLine -Encoding UTF8
-    }
-    catch {
-        Write-Log "Failed to write shutdown audit log: $($_.Exception.Message)"
-    }
-    
+
+    # Lite has no file-based audit logging (logs folder is not created); Write-Log console output covers shutdown.
+    Write-Log 'RDS Dashboard web service stopped'
+
     if ($listener -and $listener.IsListening) {
         $listener.Stop()
         $listener.Close()
