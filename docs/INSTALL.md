@@ -14,7 +14,7 @@ SQLite, a database server, and application log directories are not required.
 ## Configure
 
 1. Copy `webapp/config-example.toml` to `webapp/config.toml`.
-2. Set the dashboard title and RDS hosts under `[Farms]`.
+2. Set the dashboard title and RDS hosts under `[Farms]` in the `Default` list.
 3. Set `CustomLoginDomain` when the login domain cannot be detected automatically.
 4. Add authorized users to the local `RDS-Dashboard-Admins` group.
 

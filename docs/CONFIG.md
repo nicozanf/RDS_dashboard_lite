@@ -13,7 +13,7 @@ CollectCpuRam = true
 CustomLoginDomain = "example.com"
 
 [Farms]
-Production = ["rds01.example.com", "rds02.example.com"]
+Default = ["rds01.example.com", "rds02.example.com"]
 ```
 
 ## Settings
@@ -25,7 +25,7 @@ Production = ["rds01.example.com", "rds02.example.com"]
 - `CollectCpuRam`: controls remote CPU and RAM CIM probes. Set to `false` to reduce collector and RDS host load; session collection through `quser` continues. Default: `true`.
 - `CollectorDebugMode`: enables console diagnostics when `true`.
 - `CustomLoginDomain`: optional AD domain used by the login form.
-- `[Farms]`: configured RDS hosts. Farm names group hosts for collection configuration only; no farm page or history is retained.
+- `[Farms]` / `Default`: configured RDS hosts for the single dashboard farm. Keep this as one farm because farm selection is not available in the dashboard.
 
 ## Authentication
 

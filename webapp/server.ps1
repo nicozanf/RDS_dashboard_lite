@@ -11,7 +11,7 @@ param(
     [string]$ConfigFile = "$PSScriptRoot\config.toml"
 )
 
-$script:ApplicationVersion = '2026.09.09 Lite'
+$script:ApplicationVersion = '2026.09.11 Lite'
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Web

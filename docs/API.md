@@ -24,7 +24,7 @@ The collector publishes the latest payload into synchronized memory owned by the
 - `id`: numeric session ID
 - `message`: required for `sendmsg`
 - `username` and `sessionName`: optional display context
-- `csrfToken`: token rendered into the dashboard
+- `X-CSRF-Token` header: token rendered into the dashboard
 
 The server invokes the native `tsdiscon`, `logoff`, or `msg` command. Invalid server names, session IDs, missing messages, unauthenticated requests, and invalid CSRF tokens are rejected.
 

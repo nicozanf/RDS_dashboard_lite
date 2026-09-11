@@ -19,26 +19,37 @@
     .toolbar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:12px 0; }
     input { padding:9px; border:1px solid #b8c4d8; border-radius:6px; min-width:260px; }
     .muted { color:#53627a; font-size:13px; }
+    .status { margin:12px 0 10px; color:#172033; font-size:22px; font-weight:700; }
+    .status-detail { display:block; margin-top:4px; color:#53627a; font-size:13px; font-weight:400; }
     .message { padding:10px 12px; border-radius:6px; background:#fff4ce; border:1px solid #ffb900; }
     table { width:100%; border-collapse:collapse; background:#fff; }
     th, td { border:1px solid #d7deea; padding:7px; text-align:left; font-size:13px; }
     th { background:#223a64; color:#fff; }
+    th button { padding:0; border:0; border-radius:0; background:transparent; color:inherit; font:inherit; font-weight:600; }
+    th button:hover { text-decoration:underline; }
+    .sort-arrow { display:inline-block; width:12px; margin-left:3px; text-align:center; }
+    .pagination { display:flex; align-items:center; justify-content:flex-end; gap:10px; margin-top:12px; }
+    .pagination button { background:#dce5f3; color:#172033; }
+    .pagination button:disabled { cursor:default; opacity:0.5; }
+    .page-status { min-width:110px; text-align:center; color:#53627a; font-size:13px; }
     .actions { display:flex; gap:6px; flex-wrap:wrap; }
     button { border:0; border-radius:5px; padding:6px 9px; cursor:pointer; }
     .disconnect { background:#ffd66e; } .logoff { background:#ff9a9a; } .message-btn { background:#8fc3ff; }
     .host-badges { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px; }
-    .host-badge { display:flex; flex-direction:column; gap:2px; padding:6px 10px; border-radius:6px; color:#fff; min-width:110px; font-size:12px; }
+    .host-badge { display:flex; flex-direction:column; gap:2px; padding:6px 10px; border-radius:6px; color:#fff; min-width:110px; font-size:12px; cursor:pointer; }
     .host-badge .name { font-weight:600; }
     .host-badge.ok { background:#2e8b57; } .host-badge.warn { background:#c9820a; } .host-badge.crit { background:#c0392b; } .host-badge.unknown { background:#7a8699; }
   </style>
 </head>
 <body>
-  <header><div class="left"><a href="/dashboard" aria-label="Dashboard home"><span class="logo-mark"><span class="logo-fallback is-hidden" aria-hidden="true">NB</span><img id="header-logo" class="logo-image" src="/logo.png" alt="Logo" width="96" height="96" /></span></a><strong>__DASHBOARD_TITLE__</strong></div><span>Signed in as __SAFE_USER__ | <a href="/help">Help</a> | <a href="/logout">Logout</a></span></header>
+  <header><div class="left"><a id="dashboard-home" href="/dashboard" aria-label="Reset dashboard filters"><span class="logo-mark"><span class="logo-fallback is-hidden" aria-hidden="true">NB</span><img id="header-logo" class="logo-image" src="/logo.png" alt="Logo" width="96" height="96" /></span></a><strong>__DASHBOARD_TITLE__</strong></div><span>Signed in as __SAFE_USER__ | <a href="/help">Help</a> | <a href="/logout">Logout</a></span></header>
   <main class="shell">
-    <div class="toolbar"><input id="search" placeholder="Filter user, server, or state" /><span id="summary" class="muted">Loading live sessions...</span></div>
     <div id="message" class="message" hidden></div>
+    <div id="summary" class="status">Loading live sessions...</div>
     <div id="hostBadges" class="host-badges"></div>
-    <table><thead><tr><th>Server</th><th>User</th><th>Session</th><th>ID</th><th>State</th><th>Idle</th><th>Logon</th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table>
+    <div class="toolbar"><input id="search" placeholder="Filter user, server, or state" /></div>
+    <table><thead><tr><th><button type="button" data-sort="Server">Server<span class="sort-arrow" aria-hidden="true"></span></button></th><th><button type="button" data-sort="Username">User<span class="sort-arrow" aria-hidden="true"></span></button></th><th><button type="button" data-sort="SessionName">Session<span class="sort-arrow" aria-hidden="true"></span></button></th><th><button type="button" data-sort="ID">ID<span class="sort-arrow" aria-hidden="true"></span></button></th><th><button type="button" data-sort="State">State<span class="sort-arrow" aria-hidden="true"></span></button></th><th><button type="button" data-sort="IdleTime">Idle<span class="sort-arrow" aria-hidden="true"></span></button></th><th><button type="button" data-sort="LogonTime">Logon<span class="sort-arrow" aria-hidden="true"></span></button></th><th>Actions</th></tr></thead><tbody id="rows"></tbody></table>
+    <div class="pagination" aria-label="Connection pages"><label for="page-size">Connections per page</label><select id="page-size"><option value="5">5</option><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option></select><button id="previous-page" type="button">Previous</button><span id="page-status" class="page-status"></span><button id="next-page" type="button">Next</button></div>
   </main>
 <script>
 const csrfToken = '__CSRF_TOKEN__';
@@ -48,19 +59,36 @@ const summaryEl = document.getElementById('summary');
 const messageEl = document.getElementById('message');
 const hostBadgesEl = document.getElementById('hostBadges');
 const headerLogoEl = document.getElementById('header-logo');
+const dashboardHomeEl = document.getElementById('dashboard-home');
+const previousPageEl = document.getElementById('previous-page');
+const nextPageEl = document.getElementById('next-page');
+const pageStatusEl = document.getElementById('page-status');
+const pageSizeEl = document.getElementById('page-size');
 const logoFallbackEl = document.querySelector('.logo-fallback');
 let snapshot = { Sessions: [] };
+let sortKey = 'Server';
+let sortDirection = 1;
+let currentPage = 1;
+let pageSize = Number(pageSizeEl.value);
 headerLogoEl.addEventListener('load', () => { headerLogoEl.classList.add('is-ready'); logoFallbackEl.classList.add('is-hidden'); });
 headerLogoEl.addEventListener('error', () => { logoFallbackEl.classList.remove('is-hidden'); logoFallbackEl.classList.add('is-shown'); });
 function hostBadgeClass(cpu, ram) { const worst = Math.max(cpu ?? -1, ram ?? -1); if (worst < 0) return 'unknown'; if (worst >= 85) return 'crit'; if (worst >= 60) return 'warn'; return 'ok'; }
-function renderHosts() { const servers = Array.isArray(snapshot.Servers) ? snapshot.Servers : []; hostBadgesEl.innerHTML = servers.map(srv => { const cpu = srv.CPU; const ram = srv.RAM; const cls = hostBadgeClass(cpu, ram); const cpuText = cpu === null || cpu === undefined ? '-' : `${cpu}%`; const ramText = ram === null || ram === undefined ? '-' : `${ram}%`; return `<div class="host-badge ${cls}"><span class="name">${esc(srv.Short || srv.Server)}</span><span>CPU ${cpuText} | RAM ${ramText}</span></div>`; }).join(''); }
+function serverNameMatches(left, right) { const leftName = String(left || '').trim().toLowerCase(); const rightName = String(right || '').trim().toLowerCase(); return leftName === rightName || leftName.split('.')[0] === rightName.split('.')[0]; }
+function renderHosts() { const servers = Array.isArray(snapshot.Servers) ? snapshot.Servers : []; const sessions = Array.isArray(snapshot.Sessions) ? snapshot.Sessions : []; hostBadgesEl.innerHTML = servers.map(srv => { const cpu = srv.CPU; const ram = srv.RAM; const cls = hostBadgeClass(cpu, ram); const cpuText = cpu === null || cpu === undefined ? '-' : `${cpu}%`; const ramText = ram === null || ram === undefined ? '-' : `${ram}%`; const activeConnections = sessions.filter(session => session.State === 'Active' && serverNameMatches(session.Server, srv.Server || srv.Short)).length; return `<div class="host-badge ${cls}" data-server="${esc(srv.Server || srv.Short)}" tabindex="0" role="button"><span class="name">${esc(srv.Short || srv.Server)}</span><span>CPU ${cpuText} | RAM ${ramText} | Active ${activeConnections}</span></div>`; }).join(''); hostBadgesEl.querySelectorAll('.host-badge').forEach(badge => { const applyServerFilter = () => { searchEl.value = badge.dataset.server; currentPage = 1; render(); }; badge.addEventListener('click', applyServerFilter); badge.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); applyServerFilter(); } }); }); }
 function esc(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function showMessage(text) { messageEl.textContent = text; messageEl.hidden = !text; }
-function visibleSessions() { const query = searchEl.value.trim().toLowerCase(); return (Array.isArray(snapshot.Sessions) ? snapshot.Sessions : []).filter(s => !query || ['Server','Username','State','SessionName'].some(k => String(s[k] ?? '').toLowerCase().includes(query))); }
-function render() { const sessions = visibleSessions(); rowsEl.innerHTML = sessions.map(s => `<tr><td>${esc(s.Server)}</td><td>${esc(s.Username)}</td><td>${esc(s.SessionName)}</td><td>${esc(s.ID)}</td><td>${esc(s.State)}</td><td>${esc(s.IdleTime)}</td><td>${esc(s.LogonTime)}</td><td><div class="actions"><button class="disconnect" data-action="disconnect">Disconnect</button><button class="logoff" data-action="logoff">Log off</button><button class="message-btn" data-action="sendmsg">Message</button></div></td></tr>`).join(''); summaryEl.textContent = `${sessions.length} live session${sessions.length === 1 ? '' : 's'} | Updated ${snapshot.GeneratedAtUtc || 'not yet'}`; rowsEl.querySelectorAll('button').forEach((button, index) => button.addEventListener('click', () => act(button.dataset.action, sessions[Math.floor(index / 3)]))); }
+function formatUpdatedAt(value) { if (!value) return 'not yet'; const date = new Date(value); if (Number.isNaN(date.getTime())) return String(value); const offsetMinutes = -date.getTimezoneOffset(); const sign = offsetMinutes >= 0 ? '+' : '-'; const absoluteOffset = Math.abs(offsetMinutes); const hours = Math.floor(absoluteOffset / 60); const minutes = absoluteOffset % 60; const zone = `GMT${sign}${hours}${minutes ? `:${String(minutes).padStart(2, '0')}` : ''}`; const local = date.toLocaleString(undefined, { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hourCycle:'h23' }); return `${local} (${zone}) - refresh every __AUTO_REFRESH_SECONDS__ seconds`; }
+function visibleSessions() { const query = searchEl.value.trim().toLowerCase(); const sessions = (Array.isArray(snapshot.Sessions) ? snapshot.Sessions : []).filter(s => !query || ['Server','Username','State','SessionName'].some(k => String(s[k] ?? '').toLowerCase().includes(query))); return sessions.sort((left, right) => { const leftValue = String(left[sortKey] ?? '').toLowerCase(); const rightValue = String(right[sortKey] ?? '').toLowerCase(); return leftValue.localeCompare(rightValue, undefined, { numeric:true, sensitivity:'base' }) * sortDirection; }); }
+function updateSortIndicators() { document.querySelectorAll('th button[data-sort]').forEach(button => { const active = button.dataset.sort === sortKey; const arrow = button.querySelector('.sort-arrow'); arrow.textContent = active ? (sortDirection === 1 ? '\u25B2' : '\u25BC') : '\u2195'; button.setAttribute('aria-sort', active ? (sortDirection === 1 ? 'ascending' : 'descending') : 'none'); }); }
+function render() { const sessions = visibleSessions(); const serverCount = Array.isArray(snapshot.Servers) ? snapshot.Servers.length : 0; const pageCount = Math.max(1, Math.ceil(sessions.length / pageSize)); currentPage = Math.min(currentPage, pageCount); const pageStart = (currentPage - 1) * pageSize; const pageSessions = sessions.slice(pageStart, pageStart + pageSize); rowsEl.innerHTML = pageSessions.map((s, index) => { const disconnectButton = String(s.State || '').match(/^Disc/i) ? '' : '<button class="disconnect" data-action="disconnect">Disconnect</button>'; return `<tr data-session-index="${index}"><td>${esc(s.Server)}</td><td>${esc(s.Username)}</td><td>${esc(s.SessionName)}</td><td>${esc(s.ID)}</td><td>${esc(s.State)}</td><td>${esc(s.IdleTime)}</td><td>${esc(s.LogonTime)}</td><td><div class="actions">${disconnectButton}<button class="logoff" data-action="logoff">Log off</button><button class="message-btn" data-action="sendmsg">Message</button></div></td></tr>`; }).join(''); updateSortIndicators(); summaryEl.innerHTML = `<span>${sessions.length} live sessions on ${serverCount} servers</span><span class="status-detail">Updated ${formatUpdatedAt(snapshot.GeneratedAtUtc)}</span>`; pageStatusEl.textContent = `Page ${currentPage} of ${pageCount}`; previousPageEl.disabled = currentPage === 1; nextPageEl.disabled = currentPage === pageCount; rowsEl.querySelectorAll('button').forEach(button => button.addEventListener('click', () => act(button.dataset.action, pageSessions[Number(button.closest('tr').dataset.sessionIndex)]))); }
 async function load() { try { const response = await fetch('/api/data', { cache:'no-store' }); if (!response.ok) throw new Error(await response.text()); snapshot = await response.json(); showMessage(''); renderHosts(); render(); } catch (error) { showMessage(`Unable to load live session data: ${error.message}`); } }
-async function act(action, session) { if (!session) return; let message = ''; if (action === 'sendmsg') { message = window.prompt('Message to send:') || ''; if (!message) return; } if ((action === 'logoff' || action === 'disconnect') && !window.confirm(`${action === 'logoff' ? 'Log off' : 'Disconnect'} ${session.Username || 'this session'}?`)) return; const body = new URLSearchParams({ csrfToken, action, server:String(session.Server || ''), id:String(session.ID || ''), message, username:String(session.Username || ''), sessionName:String(session.SessionName || '') }); try { const response = await fetch('/api/session-action', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body }); if (!response.ok) throw new Error(await response.text()); showMessage('Session action completed.'); await load(); } catch (error) { showMessage(`Session action failed: ${error.message}`); } }
-searchEl.addEventListener('input', render); load(); setInterval(load, __AUTO_REFRESH_SECONDS__ * 1000);
+async function act(action, session) { if (!session) return; let message = ''; if (action === 'sendmsg') { message = window.prompt('Message to send:') || ''; if (!message) return; } if ((action === 'logoff' || action === 'disconnect') && !window.confirm(`${action === 'logoff' ? 'Log off' : 'Disconnect'} ${session.Username || 'this session'}?`)) return; const body = new URLSearchParams({ action, server:String(session.Server || ''), id:String(session.ID || ''), message, username:String(session.Username || ''), sessionName:String(session.SessionName || '') }); try { const response = await fetch('/api/session-action', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded', 'X-CSRF-Token':csrfToken}, body }); if (!response.ok) throw new Error(await response.text()); showMessage('Session action completed.'); await load(); } catch (error) { showMessage(`Session action failed: ${error.message}`); } }
+document.querySelectorAll('th button[data-sort]').forEach(button => button.addEventListener('click', () => { if (sortKey === button.dataset.sort) sortDirection *= -1; else { sortKey = button.dataset.sort; sortDirection = 1; } currentPage = 1; render(); }));
+dashboardHomeEl.addEventListener('click', event => { event.preventDefault(); searchEl.value = ''; sortKey = 'Server'; sortDirection = 1; currentPage = 1; render(); });
+previousPageEl.addEventListener('click', () => { if (currentPage > 1) { currentPage--; render(); } });
+nextPageEl.addEventListener('click', () => { currentPage++; render(); });
+pageSizeEl.addEventListener('change', () => { pageSize = Number(pageSizeEl.value); currentPage = 1; render(); });
+searchEl.addEventListener('input', () => { currentPage = 1; render(); }); load(); setInterval(load, __AUTO_REFRESH_SECONDS__ * 1000);
 </script>
 </body>
 </html>

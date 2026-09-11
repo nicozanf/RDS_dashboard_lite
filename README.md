@@ -5,7 +5,9 @@ It's built with native PowerShell/.NET components and standard Windows commands 
 
 It's a stripped down version of the RDS dashboard hosted at https://github.com/nicozanf/RDS_dashboard. Removing data saving for history graphs greatly reduces its cpu/memory footprint.
 
-the **main lite Dashboard**. All the current sessions are listed and searchable. You can disconnect / logoff /message users.
+Here is an example screenshot of the **main lite Dashboard**. All the current sessions are listed and searchable/sortable.
+You can also disconnect / logoff /message users. Clicking on a server's badge automatically filter only the connections on it.
+
 ![the main Dashboard](docs/images/dash.png)
 
 ## Features
@@ -16,6 +18,7 @@ the **main lite Dashboard**. All the current sessions are listed and searchable.
 - Live searchable session dashboard
 - Session actions: disconnect, logoff, and send message
 - Configurable collection load through `MaxConcurrentJobs` and `CollectCpuRam`
+- It's easy to add your Company logo and favicon
 - Help page
 
 For prerequisites and deployment, see [INSTALL.md](docs/INSTALL.md).

@@ -36,16 +36,16 @@ function Read-TomlStringArray {
         [string]$SectionName = ''
     )
 
-    $prefix = if ([string]::IsNullOrWhiteSpace($SectionName)) { '' } else { '(?ms)^\[' + [regex]::Escape($SectionName) + '\]\s*$.*?' }
-    $pattern = $prefix + '(?im)^\s*' + [regex]::Escape($PropertyName) + '\s*=\s*\[(.*?)\]'
+    $prefix = if ([string]::IsNullOrWhiteSpace($SectionName)) { '(?is)(?:^|\r?\n)\s*' } else { '(?ims)^\[' + [regex]::Escape($SectionName) + '\]\s*$.*?' }
+    $pattern = $prefix + [regex]::Escape($PropertyName) + '\s*=\s*\[(?<values>.*?)\]'
     $match = [regex]::Match($Content, $pattern)
     if (-not $match.Success) {
         return @()
     }
 
-    $items = @($match.Groups[1].Value -split '\n' | ForEach-Object {
-        $_ -replace '["\u0027,]', '' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-    })
+    $items = @([regex]::Matches($match.Groups['values'].Value, '["\u0027](?<value>[^"\u0027]*)["\u0027]') | ForEach-Object {
+        $_.Groups['value'].Value.Trim()
+    } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 
     return (Get-NormalizedConfigServerList -Values $items)
 }
