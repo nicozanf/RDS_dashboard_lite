@@ -3,7 +3,7 @@
 A lightweight Windows RDS session dashboard hosted at https://github.com/nicozanf/RDS_dashboard_lite.
 It's built with native PowerShell/.NET components and standard Windows commands such as `quser`. It keeps only the latest live snapshot in the server process memory. It does not need a Web server, nor a database (not even SQLite).
 
-It's a stripped down version of the RDS dashboard hosted at https://github.com/nicozanf/RDS_dashboard. Removing data saving for history graphs greatly reduces its cpu/memory footprint.
+It's a stripped down version of the full-feature RDS dashboard hosted at https://github.com/nicozanf/RDS_dashboard. Removing data saving for history graphs greatly reduces its cpu/memory footprint.
 
 Here is an example screenshot of the **main lite Dashboard**. All the current sessions are listed and searchable/sortable.
 You can also disconnect / logoff /message users. Clicking on a server's badge automatically filter only the connections on it.
@@ -13,13 +13,13 @@ You can also disconnect / logoff /message users. Clicking on a server's badge au
 ## Features
 
 - HTTPS on port 443
+- always running as a Windows service
 - AD form-based authentication
-- Automatic operation through a Windows Service
 - Live searchable session dashboard
 - Session actions: disconnect, logoff, and send message
 - Configurable collection load through `MaxConcurrentJobs` and `CollectCpuRam`
 - It's easy to add your Company logo and favicon
-- Help page
+
 
 For prerequisites and deployment, see [INSTALL.md](docs/INSTALL.md).
 
